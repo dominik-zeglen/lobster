@@ -2,6 +2,7 @@ package synth
 
 import (
 	"fmt"
+	"lobster/ioMidi"
 	"sync"
 	"time"
 
@@ -11,22 +12,33 @@ import (
 const (
 	a          = 440
 	channels   = 16
-	chunkSize  = 4096
+	chunkSize  = 2048
 	sampleRate = 44100
 )
 
 func Start() {
+	volume := 10
+	pitch := int8(0)
+
 	oscs := []Oscillator{
 		Oscillator{
+			pitch: &pitch,
 			shape: Sine,
 		},
 		Oscillator{
-			shape:  Sine,
 			detune: 4,
+			pitch:  &pitch,
+			shape:  Sine,
 		},
 		Oscillator{
-			shape:  Sine,
 			detune: 7,
+			pitch:  &pitch,
+			shape:  Sine,
+		},
+		Oscillator{
+			detune: 10,
+			pitch:  &pitch,
+			shape:  Sine,
 		},
 	}
 
@@ -38,14 +50,18 @@ func Start() {
 		for oscInd := 0; oscInd < len(oscs); oscInd++ {
 			mixer.AddChunk(oscs[oscInd].GetChunk(), oscInd)
 		}
-		audio := mixer.Mix()
+		audio := mixer.Mix(volume)
 
 		ch <- audio
 	}
 
+	setPitch := func(newPitch int8) {
+		pitch = newPitch
+	}
+
 	alive := true
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	// Play loop
 	go func() {
@@ -56,6 +72,9 @@ func Start() {
 		audio := <-audioCh
 
 		for alive {
+			// TODO: Instead of using dirty hacks just make oscillator return
+			// io.Reader so it won't be rewritten again and again, just create
+			// one stream which will act as one note channel
 			go getAudio(audioCh)
 			err := player.playPcm(audio)
 			if err != nil {
@@ -75,23 +94,37 @@ func Start() {
 				panic(err)
 			}
 			switch char {
-			case 113:
+			case 'q':
 				alive = false
 
-			case 119:
+			case 'w':
 				oscs[0].detune++
-			case 115:
+			case 's':
 				oscs[0].detune--
 
-			case 101:
+			case 'e':
 				oscs[1].detune++
-			case 100:
+			case 'd':
 				oscs[1].detune--
 
-			case 114:
+			case 'r':
 				oscs[2].detune++
-			case 102:
+			case 'f':
 				oscs[2].detune--
+
+			case 't':
+				oscs[3].detune++
+			case 'g':
+				oscs[3].detune--
+
+			case '=':
+				if volume < 100 {
+					volume++
+				}
+			case '-':
+				if volume > 0 {
+					volume--
+				}
 			}
 		}
 	}()
@@ -103,10 +136,12 @@ func Start() {
 		first := true
 		for alive {
 			msg := fmt.Sprintf(
-				"Osc 1: %d, Osc 2: %d, Osc 3: %d",
+				"Volume %d, Osc 1: %d, Osc 2: %d, Osc 3: %d, Osc 4: %d",
+				volume,
 				oscs[0].detune,
 				oscs[1].detune,
 				oscs[2].detune,
+				oscs[3].detune,
 			)
 			if !first {
 				cls := ""
@@ -120,6 +155,9 @@ func Start() {
 			first = false
 		}
 	}()
+
+	// Midi IO loop
+	go ioMidi.Loop(&alive, &wg, setPitch)
 
 	wg.Wait()
 

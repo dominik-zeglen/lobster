@@ -22,7 +22,7 @@ func (mixer *Mixer) AddChunk(chunk []float64, channel int) {
 	mixer.chunks[channel] = chunk
 }
 
-func (mixer *Mixer) Mix() []float64 {
+func (mixer *Mixer) Mix(volume int) []float64 {
 	defer mixer.reset()
 
 	mixed := make([]float64, chunkSize)
@@ -34,7 +34,7 @@ func (mixer *Mixer) Mix() []float64 {
 			v += mixer.chunks[channelInd][probInd]
 		}
 
-		mixed[probInd] = v / channels
+		mixed[probInd] = v / channels * float64(volume) / 100.
 	}
 
 	return mixed

@@ -17,13 +17,14 @@ const (
 type Oscillator struct {
 	detune      int8
 	phaseOffset float64
+	pitch       *int8
 	shape       WaveShape
 }
 
 func (osc *Oscillator) GetChunk() []float64 {
 	chunkByRate := float64(chunkSize) / float64(sampleRate)
 	wave := make([]float64, chunkSize)
-	freq := (a * math.Pow(2, float64(osc.detune)/12))
+	freq := (a * math.Pow(2, float64(osc.detune+*osc.pitch)/12))
 
 	for probInd := range wave {
 		t := float64(probInd) / sampleRate

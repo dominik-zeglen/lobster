@@ -1,18 +1,10 @@
 package synth
 
 import (
-	"encoding/binary"
 	"io"
-	"math"
 
 	"github.com/hajimehoshi/oto"
 )
-
-func float64ToByte(f float64) []byte {
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], math.Float64bits(f))
-	return buf[:]
-}
 
 type Player struct {
 	audioCtx oto.Context
