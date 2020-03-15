@@ -2,11 +2,13 @@ package synth
 
 import (
 	"fmt"
+	"io"
 	"lobster/ioMidi"
 	"sync"
 	"time"
 
 	"github.com/eiannone/keyboard"
+	"github.com/hajimehoshi/oto"
 )
 
 const (
@@ -18,70 +20,62 @@ const (
 
 func Start() {
 	volume := 10
-	pitch := int8(0)
 
 	oscs := []Oscillator{
 		Oscillator{
-			pitch: &pitch,
 			shape: Sine,
 		},
 		Oscillator{
 			detune: 4,
-			pitch:  &pitch,
 			shape:  Sine,
 		},
 		Oscillator{
 			detune: 7,
-			pitch:  &pitch,
 			shape:  Sine,
 		},
 		Oscillator{
 			detune: 10,
-			pitch:  &pitch,
 			shape:  Sine,
 		},
-	}
-
-	mixer := NewMixer()
-	player := newPlayer()
-	defer player.close()
-
-	getAudio := func(ch chan []float64) {
-		for oscInd := 0; oscInd < len(oscs); oscInd++ {
-			mixer.AddChunk(oscs[oscInd].GetChunk(), oscInd)
-		}
-		audio := mixer.Mix(volume)
-
-		ch <- audio
-	}
-
-	setPitch := func(newPitch int8) {
-		pitch = newPitch
 	}
 
 	alive := true
 	var wg sync.WaitGroup
 	wg.Add(4)
 
+	note := Note{}
+	audioBus := AudioBus{
+		alive:  &alive,
+		notes:  []Note{note},
+		oscs:   oscs,
+		volume: &volume,
+	}
+
+	addNote := func(pitch int8) {
+		audioBus.RegisterNote(Note{
+			pitch: pitch,
+		})
+	}
+
 	// Play loop
 	go func() {
 		defer wg.Done()
 
-		audioCh := make(chan []float64)
-		go getAudio(audioCh)
-		audio := <-audioCh
+		audioCtx, err := oto.NewContext(sampleRate, 1, 2, 2)
+		if err != nil {
+			panic(err)
+		}
+		defer audioCtx.Close()
+		player := audioCtx.NewPlayer()
 
-		for alive {
-			// TODO: Instead of using dirty hacks just make oscillator return
-			// io.Reader so it won't be rewritten again and again, just create
-			// one stream which will act as one note channel
-			go getAudio(audioCh)
-			err := player.playPcm(audio)
-			if err != nil {
-				panic(err)
-			}
+		// for alive {
 
-			audio = <-audioCh
+		// }
+		if _, err := io.Copy(player, audioBus); err != nil {
+			panic(err)
+		}
+		if err := player.Close(); err != nil {
+			panic(err)
 		}
 	}()
 
@@ -157,7 +151,7 @@ func Start() {
 	}()
 
 	// Midi IO loop
-	go ioMidi.Loop(&alive, &wg, setPitch)
+	go ioMidi.Loop(&alive, &wg, addNote)
 
 	wg.Wait()
 

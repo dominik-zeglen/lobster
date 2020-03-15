@@ -8,6 +8,7 @@ import (
 
 type Player struct {
 	audioCtx oto.Context
+	p        *oto.Player
 }
 
 func newPlayer() Player {
@@ -22,8 +23,11 @@ func newPlayer() Player {
 		panic(err)
 	}
 
+	player := audioCtx.NewPlayer()
+
 	return Player{
 		audioCtx: *audioCtx,
+		p:        player,
 	}
 }
 
@@ -95,13 +99,12 @@ func (player Player) close() error {
 }
 
 func (player Player) playPcm(pcm []float64) error {
-	p := player.audioCtx.NewPlayer()
 	buf := pcmAsBuffer(pcm)
 
-	if _, err := io.Copy(p, buf); err != nil {
+	if _, err := io.Copy(player.p, buf); err != nil {
 		return err
 	}
-	if err := p.Close(); err != nil {
+	if err := player.p.Close(); err != nil {
 		return err
 	}
 	return nil

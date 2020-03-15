@@ -38,11 +38,11 @@ type MidiIoOpts struct {
 	Pitch *int8
 }
 
-func Loop(alive *bool, wg *sync.WaitGroup, setPitch func(int8)) {
+func Loop(alive *bool, wg *sync.WaitGroup, addNote func(int8)) {
 	defer wg.Done()
 
 	noteOn := func(p *mid.Position, channel, key, vel uint8) {
-		setPitch(int8(key - 60))
+		addNote(int8(key - 60))
 	}
 
 	// noteOff := func(p *mid.Position, channel, key, vel uint8) {

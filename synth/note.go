@@ -10,12 +10,12 @@ const (
 )
 
 type Note struct {
-	pitch int
+	pitch int8
 	state NoteState
 }
 
 // Pitch is counted as an offset (halftones) from the A4
-func NewNote(pitch int, velocity uint8) Note {
+func NewNote(pitch int8, velocity uint8) Note {
 	return Note{
 		pitch: pitch,
 		state: Attack,
