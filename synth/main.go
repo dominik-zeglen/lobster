@@ -43,16 +43,20 @@ func Start() {
 	var wg sync.WaitGroup
 	wg.Add(4)
 
-	note := Note{}
-	audioBus := AudioBus{
+	audioBus := &AudioBus{
 		alive:  &alive,
-		notes:  []Note{note},
 		oscs:   oscs,
 		volume: &volume,
 	}
 
 	addNote := func(pitch int8) {
 		audioBus.RegisterNote(Note{
+			pitch: pitch,
+		})
+	}
+
+	removeNote := func(pitch int8) {
+		audioBus.UnregisterNote(Note{
 			pitch: pitch,
 		})
 	}
@@ -151,7 +155,7 @@ func Start() {
 	}()
 
 	// Midi IO loop
-	go ioMidi.Loop(&alive, &wg, addNote)
+	go ioMidi.Loop(&alive, &wg, addNote, removeNote)
 
 	wg.Wait()
 

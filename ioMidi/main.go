@@ -38,15 +38,16 @@ type MidiIoOpts struct {
 	Pitch *int8
 }
 
-func Loop(alive *bool, wg *sync.WaitGroup, addNote func(int8)) {
+func Loop(alive *bool, wg *sync.WaitGroup, addNote func(int8), removeNote func(int8)) {
 	defer wg.Done()
 
 	noteOn := func(p *mid.Position, channel, key, vel uint8) {
 		addNote(int8(key - 60))
 	}
 
-	// noteOff := func(p *mid.Position, channel, key, vel uint8) {
-	// }
+	noteOff := func(p *mid.Position, channel, key, vel uint8) {
+		removeNote(int8(key - 60))
+	}
 
 	drv, err := driver.New()
 	must(err)
@@ -65,6 +66,7 @@ func Loop(alive *bool, wg *sync.WaitGroup, addNote func(int8)) {
 	rd := mid.NewReader()
 
 	rd.Msg.Channel.NoteOn = noteOn
+	rd.Msg.Channel.NoteOff = noteOff
 	rd.Msg.Each = nil
 	// rd.Msg.Channel.NoteOff = noteOff
 

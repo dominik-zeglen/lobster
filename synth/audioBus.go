@@ -1,6 +1,8 @@
 package synth
 
-import "io"
+import (
+	"io"
+)
 
 type AudioBus struct {
 	alive  *bool
@@ -13,10 +15,26 @@ func (bus *AudioBus) RegisterNote(note Note) {
 	bus.notes = append(bus.notes, note)
 }
 
+func (bus *AudioBus) UnregisterNote(note Note) {
+	for noteInd := range bus.notes {
+		if bus.notes[noteInd].pitch == note.pitch {
+			bus.notes = append(bus.notes[:noteInd], bus.notes[noteInd+1:]...)
+			break
+		}
+	}
+}
+
 func (bus AudioBus) Read(buf []byte) (int, error) {
-	if !*bus.alive {
+	divider := int32(len(bus.notes))
+	if divider == 0 {
+		divider = 1
+	}
+	isAlive := *bus.alive
+
+	if !isAlive {
 		return 0, io.EOF
 	}
+
 	out := make([]int32, chunkSize)
 
 	for noteInd := range bus.notes {
@@ -33,7 +51,7 @@ func (bus AudioBus) Read(buf []byte) (int, error) {
 	}
 
 	for sampleInd := range out {
-		s := int16(out[sampleInd] / int32(len(bus.notes)) / int32(len(bus.oscs)) * int32(*bus.volume) / 100)
+		s := int16(out[sampleInd] / divider / int32(len(bus.oscs)) * int32(*bus.volume) / 100)
 		buf[sampleInd*2] = byte(s)
 		buf[sampleInd*2+1] = byte(s >> 8)
 	}
